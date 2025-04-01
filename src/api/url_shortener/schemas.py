@@ -10,6 +10,7 @@ class LinkResponse(BaseModel):
     short_code: str
 
 class LinkStatsResponse(BaseModel):
+    original_url: str
     creation_date: datetime
     clicks_count: int
     last_usage_at: datetime = None

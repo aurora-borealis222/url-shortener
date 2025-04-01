@@ -163,7 +163,8 @@ async def get_link_stats_by(short_code: str, session: AsyncSession = Depends(get
         query = select(Link).filter_by(short_code=short_code, deleted=False)
         result = await session.execute(query)
         link = result.scalar_one()
-        link_stats_response = LinkStatsResponse(creation_date=link.creation_date, clicks_count=link.clicks_count)
+        link_stats_response = LinkStatsResponse(original_url=link.original_url, creation_date=link.creation_date,
+                                                clicks_count=link.clicks_count)
 
         if link.last_usage_at is not None:
             link_stats_response.last_usage_at = link.last_usage_at
