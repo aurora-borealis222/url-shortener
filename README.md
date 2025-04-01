@@ -67,7 +67,20 @@
 ## Запуск приложения
 Запуск приложения происходит через **docker compose**. 
 
-Для этого в корне проекта нужно вызвать команду:
+Для этого в корне проекта нужно создать файл **.env** с переменными окружения:
+```
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5431
+POSTGRES_DB=url_shortener_db
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+
+SECRET=12345
+
+DAYS_TO_EXPIRE=5
+```
+
+А затем там же нужно вызвать команду:
 
 ```docker compose up --build```
 
