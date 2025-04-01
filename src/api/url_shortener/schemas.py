@@ -14,3 +14,11 @@ class LinkStatsResponse(BaseModel):
     clicks_count: int
     last_usage_at: datetime = None
 
+class LinkDetailedResponse(LinkResponse):
+    original_url: str
+    short_code: str
+    creation_date: datetime
+    expires_at: datetime = None
+    clicks_count: int
+    last_usage_at: datetime = None
+    deleted: bool

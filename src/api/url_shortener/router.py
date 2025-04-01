@@ -16,7 +16,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
-from .schemas import LinkRequest, LinkResponse, LinkStatsResponse
+from .schemas import LinkRequest, LinkResponse, LinkStatsResponse, LinkDetailedResponse
 
 alphabet = string.ascii_letters + string.digits
 
@@ -27,6 +27,7 @@ router = APIRouter(
 
 @router.post("/shorten", response_model=LinkResponse)
 async def add_short_link(link_request: LinkRequest, expires_at: datetime = None, user_id: int = None, session: AsyncSession = Depends(get_async_session)):
+    '''Создание короткой ссылки с помощью генерации уникального кода либо строки пользователя'''
     custom_alias = link_request.custom_alias
     custom_alias_set = custom_alias is not None
 
@@ -64,10 +65,10 @@ async def add_short_link(link_request: LinkRequest, expires_at: datetime = None,
     await session.commit()
     return LinkResponse(original_url=link.original_url, short_code=link.short_code)
 
-
 @router.get("/search", response_model=list[LinkResponse])
 @cache(expire=60)
 async def find_by(original_url: str, session: AsyncSession = Depends(get_async_session), request: Request = None):
+    '''Поиск короткой ссылки по оригинальному URL'''
     try:
         query = select(Link).filter_by(original_url=original_url, deleted=False)
         result = await session.execute(query)
@@ -80,9 +81,62 @@ async def find_by(original_url: str, session: AsyncSession = Depends(get_async_s
                             detail=f"Error occurred while searching the links by original url {original_url}: {e}")
 
 
+@router.get("/history_expired", response_model=list[LinkDetailedResponse])
+async def get_history_of_expired_links(session: AsyncSession = Depends(get_async_session), user: User = Depends(current_active_user)):
+    '''Отображение истории всех истекших ссылок пользователя с информацией о них'''
+    try:
+        query = select(Link).filter(Link.user == user, Link.expires_at < datetime.now())
+        result = await session.execute(query)
+        links = result.scalars().all()
+
+        links_responses = []
+        for link in links:
+            link_response = LinkDetailedResponse(original_url=link.original_url, short_code=link.short_code,
+                                                 creation_date=link.creation_date, expires_at=link.expires_at,
+                                                 clicks_count=link.clicks_count, deleted=link.deleted)
+
+            if link.last_usage_at is not None:
+                link_response.last_usage_at = link.last_usage_at
+
+            links_responses.append(link_response)
+
+        return links_responses
+
+    except (BaseException, Exception) as e:
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                            detail=f"Error occurred while getting the history of expired links: {e}")
+
+@router.get("/all", response_model=list[LinkDetailedResponse])
+async def get_all_active_links(session: AsyncSession = Depends(get_async_session), user: User = Depends(current_active_user)):
+    '''Получение всех активных коротких ссылок пользователя с информацией о них'''
+    try:
+        query = select(Link).filter(Link.user == user, Link.deleted == False)
+        result = await session.execute(query)
+        links = result.scalars().all()
+
+        links_responses = []
+        for link in links:
+            link_response = LinkDetailedResponse(original_url=link.original_url, short_code=link.short_code,
+                                                 creation_date=link.creation_date, clicks_count=link.clicks_count,
+                                                 deleted=link.deleted)
+
+            if link.expires_at is not None:
+                link_response.expires_at = link.expires_at
+
+            if link.last_usage_at is not None:
+                link_response.last_usage_at = link.last_usage_at
+
+            links_responses.append(link_response)
+
+        return links_responses
+
+    except (BaseException, Exception) as e:
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                            detail=f"Error occurred while getting the active links: {e}")
+
 @router.get("/{short_code}", response_class=RedirectResponse)
-# @cache(expire=60)
 async def get_link_by(short_code: str, session: AsyncSession = Depends(get_async_session), request: Request = None):
+    '''Перенаправление на оригинальный URL по коду'''
     try:
         query = select(Link).filter_by(short_code=short_code, deleted=False)
         result = await session.execute(query)
@@ -104,6 +158,7 @@ async def get_link_by(short_code: str, session: AsyncSession = Depends(get_async
 @router.get("/{short_code}/stats", response_model=LinkStatsResponse)
 @cache(expire=60)
 async def get_link_stats_by(short_code: str, session: AsyncSession = Depends(get_async_session), request: Request = None):
+    '''Получение статистики по короткой ссылке: даты создания, количества переходов и даты последнего использования'''
     try:
         query = select(Link).filter_by(short_code=short_code, deleted=False)
         result = await session.execute(query)
@@ -123,6 +178,7 @@ async def get_link_stats_by(short_code: str, session: AsyncSession = Depends(get
 async def remove_link(short_code: str, session: AsyncSession = Depends(get_async_session),
                       user: User = Depends(current_active_user),
                       request: Request = None):
+    '''Удаление короткой ссылки'''
     try:
         query = select(Link).filter_by(short_code=short_code, deleted=False)
         result = await session.execute(query)
@@ -149,6 +205,7 @@ async def remove_link(short_code: str, session: AsyncSession = Depends(get_async
 async def update_short_link(short_code: str, session: AsyncSession = Depends(get_async_session),
                             user: User = Depends(current_active_user),
                             request: Request = None):
+    '''Обновление кода короткой ссылки'''
     try:
         query = select(Link).filter_by(short_code=short_code, deleted=False)
         result = await session.execute(query)

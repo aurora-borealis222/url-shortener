@@ -23,5 +23,5 @@ class Link(Base):
     clicks_count: Mapped[int] = mapped_column(Integer, default=0)
     last_usage_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=True)
     deleted: Mapped[bool] = mapped_column(Boolean, default=False)
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=True)
     user: Mapped[User] = relationship()
