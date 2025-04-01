@@ -58,7 +58,11 @@
 
 ## Примеры запросов
 
-
+- **GET** http://localhost:8000/links/wBkxl
+- **GET** http://localhost:8000/links/search?original_url=https://www.google.ru/
+- **GET** http://localhost:8000/links/all
+- **GET** http://localhost:8000/links/history_expired
+- **PUT** http://localhost:8000/links/wBkxl
 
 ## Запуск приложения
 Запуск приложения происходит через **docker compose**. 
