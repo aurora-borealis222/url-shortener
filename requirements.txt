@@ -1,0 +1,17 @@
+fastapi
+fastapi-users[sqlalchemy]
+uvicorn[standard]
+redis~=5.2.1
+alembic~=1.15.1
+sqlalchemy~=2.0.39
+psycopg2-binary
+asyncpg
+python-dotenv~=1.0.1
+fastapi-users[sqlalchemy]
+fastapi-cache2[redis]
+pydantic~=2.10.6
+starlette~=0.46.1
+celery~=5.5.0
+flower~=2.0.1
+gunicorn
+setuptools~=78.1.0

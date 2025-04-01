@@ -1,0 +1,73 @@
+services:
+  db:
+    image: postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - ${POSTGRES_PORT}:${POSTGRES_PORT}
+    command: -p ${POSTGRES_PORT}
+    expose:
+      - ${POSTGRES_PORT}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis
+    volumes:
+      - redis-data:/redis-data
+    ports:
+      - 6379:6379
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 1m30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+      start_interval: 10s
+
+  backend:
+    build:
+      context: .
+    command: ["/app/scripts/prestart.sh"]
+    environment:
+      - POSTGRES_HOST=db
+    ports:
+      - 8000:8000
+    depends_on:
+       redis:
+         condition: service_healthy
+
+  celery:
+    build:
+      context: .
+    command: ["/app/scripts/celery.sh", "celery"]
+    depends_on:
+       redis:
+         condition: service_healthy
+
+  celery-beat:
+    build:
+      context: .
+    command: ["/app/scripts/celery.sh", "beat"]
+    volumes:
+      - celery-beat:/celery-beat
+    depends_on:
+       redis:
+         condition: service_healthy
+
+  flower:
+    build:
+      context: .
+    command: ["/app/scripts/celery.sh", "flower"]
+    depends_on:
+       - redis
+       - celery
+    ports:
+      - 8888:5555
+
+volumes:
+  postgres-data:
+  redis-data:
+  celery-beat:
