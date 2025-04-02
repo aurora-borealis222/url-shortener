@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from celery import Celery
 
 from db.database import async_session_maker
@@ -13,7 +13,7 @@ from config import POSTGRES_PASSWORD, POSTGRES_USER, POSTGRES_HOST, POSTGRES_POR
 
 DATABASE_URL = f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
-celery = Celery('tasks', broker='redis://redis:6379')
+celery = Celery('tasks', broker='redis://redis:6379//', include=["tasks.tasks"])
 
 engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
@@ -32,7 +32,7 @@ def delete_expired_links():
 
 @celery.task(name="delete_not_used_links", default_retry_delay=5, max_retries=3)
 def delete_not_used_links():
-    query = select(Link).filter((Link.last_usage_at - datetime.now()).days >= DAYS_TO_EXPIRE)
+    query = select(Link).where(Link.last_usage_at + timedelta(days=int(DAYS_TO_EXPIRE)) >= datetime.now())
     result = session.execute(query)
     links = result.scalars().all()
 
@@ -44,11 +44,11 @@ def delete_not_used_links():
 
 celery.conf.beat_schedule = {
     'delete_expired_links': {
-        'task': 'tasks.delete_expired_links',
+        'task': 'delete_expired_links',
         'schedule': 60.0
     },
     'delete_not_used_links': {
-        'task': 'tasks.delete_not_used_links',
+        'task': 'delete_not_used_links',
         'schedule': 120.0
     }
 }
